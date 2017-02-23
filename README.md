@@ -1,0 +1,2 @@
+# AIMusicComposer
+Automatically music generation
