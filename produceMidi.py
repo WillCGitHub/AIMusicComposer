@@ -83,18 +83,11 @@ class produceMidi():
 		for idx in range(0,num_of_notes):
 			randInt = random.randint(1,100)
 
-			#if idx <= num_of_states:
-				#nxt_p = markov_p.get_next_state(curr_p) # get a markov state
 
-
-
-			#else:
 			nxt_p = self.get_next_by_multi_state(generated_list_p,markov_p,num_of_states)
 
 			if nxt_p is None:
 				nxt_p = generated_list_p[-1]
-
-
 
 
 			generated_list_p.append(nxt_p)
@@ -123,8 +116,6 @@ class produceMidi():
 
 
 
-
-
 		key_chain = [str(x) for x in generated_list]
 		#print("key chain: {}  num of state: {}, idx:{}".format(key_chain,num_of_states,idx))
 
@@ -142,7 +133,8 @@ class produceMidi():
 		else:
 			return nxt
 
-
+	"""
+	Not used
 	def generate_duration(self,time_signiture = 4,num_of_bars = 12):
 		rhythm_list = []
 		total_length = num_of_bars*time_signiture
@@ -163,6 +155,7 @@ class produceMidi():
 			total_length -= temp_total
 
 		return rhythm_list
+	"""
 
 	def produce_new_track(self,melody):
 		self.track = MidiTrack()

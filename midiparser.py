@@ -279,31 +279,21 @@ if __name__ == "__main__":
 
 	#print(dfUpper)
 	pitch = list(dfUpper['Pitch'])
-	tempP = []
+	tempP = [str(int(p)) for p in pitch]
 
-	for p in pitch:
-		tempP.append(str(p))
 	duration = list(dfUpper['Duration'])
-
-	pitchUniqueState = []
-	for p in tuple(set(pitch)):
-		pitchUniqueState.append(str(p))
-
-	pitchUniqueState = tuple(pitchUniqueState)
-	durationUniqueState = [] 
-	for d in tuple(set(duration)):
-		durationUniqueState.append(d)
-
-	durationUniqueState = tuple(durationUniqueState)
+	tempD = [str(d) for d in duration]
 
 
 
-	hh = hh.HMMHelper(tempP,duration)
-	transitionDF,trans_prob = hh.calculateTransitionMatrix()
-	emissionDF,emit_prob = hh.calculateEmissionMatrix()
+	hh = hh.HMMHelper(tempP,tempD)
+
+	pitchUniqueState = hh.findUniqueStates(pitch)
+	durationUniqueState = hh.findUniqueStates(duration,t="origin")
+	trans_prob = hh.calculateTransitionMatrix()
+	emit_prob = hh.calculateEmissionMatrix()
 	hh.calculateInitialDistribution()
 	start_prob = hh.initialDistributionDict
-	print(start_prob)
 	model = HMM.Model(durationUniqueState, pitchUniqueState, start_prob, trans_prob, emit_prob)
 
 
@@ -326,31 +316,6 @@ if __name__ == "__main__":
 	print(model.decode(sequence))
 
 
-
-	#time = dfUpper['Time']
-	#plt.scatter(time,duration)
-	#plt.show()
-
-
-
-	#melody, chord = splitMelodyAndChord(dfUpper)
-	#print(chord)
-	"""
-
-	time = []
-	pitches = []
-	for row in chord.iterrows():
-		for note in row[1][0]:
-			for n in note:
-				pitches.append(n)
-				time.append(row[1][3])
-
-
-	print(len(pitches))
-	print(len(time))
-	plt.scatter(time,pitches)
-	plt.show()
-	"""
 
 
 

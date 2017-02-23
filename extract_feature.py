@@ -51,7 +51,6 @@ def extract(MIDI_path,num_of_states,table_name):
 	
 		
 	markov_p = mc.MarkovChain()
-	markov_d = mc.MarkovChain()
 
 	for midi_file in midi_path_list:
 		
@@ -67,12 +66,9 @@ def extract(MIDI_path,num_of_states,table_name):
 
 			melodyDF, chordDF = midiP.splitMelodyAndChord(dfUpper)
 				
-
 			for num_of_state in range(1,num_of_states+1):
-
-
 				ptemp = melodyDF.loc[:,'Pitch']
-				dtemp = melodyDF.loc[:,'Duration']
+
 				markov_p.addData_multi_dim(ptemp,num_of_state)
 
 

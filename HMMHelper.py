@@ -48,9 +48,9 @@ class HMMHelper():
 			transitionDict[element][nxtElement]+=1
 
 		transitionMatrixDict = dict()
-		data = []
+
 		for (state,valueDict) in sorted(transitionDict.items(),key=lambda i:(float(i[0]))):
-			row = [state]
+
 			total_number_of_states = 0
 			temp = dict()
 			
@@ -62,21 +62,11 @@ class HMMHelper():
 				else:
 					prob = 0
 				temp[k] = prob
-				row.append(prob)
-			data.append(row)
+
 			transitionMatrixDict[state] = temp
 
-		
-		columnsNames = ['Name']
-		for idx, e in enumerate(sorted(self.hiddenSet)):
-			if str(e) not in columnsNames:
-				columnsNames.append(str(e))
 
-
-
-		df = pd.DataFrame(data= data,columns = list(columnsNames))
-
-		return df,transitionMatrixDict
+		return transitionMatrixDict
 
 
 	def calculateEmissionMatrix(self):
@@ -107,10 +97,10 @@ class HMMHelper():
 
 
 
-		data = []
+
 		emissionMatrixDict = dict()
 		for (state,valueDict) in sorted(emissionDict.items(),key=lambda i:(float(i[0]))):
-			row = [state]
+
 			total_number_of_states = 0
 			temp = dict()
 			for k,v in valueDict.items():
@@ -120,24 +110,21 @@ class HMMHelper():
 					prob = v/total_number_of_states
 				else:
 					prob = 0
-				row.append(prob)
 				temp[k] = prob
-			data.append(row)
+
 			emissionMatrixDict[state] = temp
 
-		
-		columnsNames = ['Name']
-		for idx, e in enumerate(sorted(self.observedSet)):
-			if str(e) not in columnsNames:
-				columnsNames.append(str(e))
 
+		return emissionMatrixDict
 
-		df = pd.DataFrame(data= data,columns = list(columnsNames))
-
-		return df,emissionMatrixDict
-
-
-
+	def findUniqueStates(self,dataList,t= "int"):
+		uniqueStates = []
+		for element in tuple(set(dataList)):
+			if t == "int":
+				uniqueStates.append(str(int(element)))
+			elif t == "origin":
+				uniqueStates.append(str(element))
+		return tuple(uniqueStates)
 
 
 
@@ -149,8 +136,8 @@ if __name__ == '__main__':
 	hiddenSet = [1,2,3,4,5,6,7,8,9,10]
 	observedSet = [0,0,3,5,8,10,20,8,3,2]
 	HMM = HMM(observedSet,hiddenSet)
-	transitionDF,transitionMatrixDict = HMM.calculateTransitionMatrix()
-	emissionDF,emissionMatrixDict = HMM.calculateEmissionMatrix()
+	transitionMatrixDict = HMM.calculateTransitionMatrix()
+	emissionMatrixDict = HMM.calculateEmissionMatrix()
 	HMM.calculateInitialDistribution()
 	initialDistribution = HMM.initialDistribution
 
