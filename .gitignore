@@ -1,0 +1,7 @@
+
+/__pycache__/*
+/samples/*
+/webscraper/*
+/MIDI/*
+/SampleMIDI/*
+produceMidiBackUp.py
