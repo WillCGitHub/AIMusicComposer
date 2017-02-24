@@ -34,7 +34,7 @@ basic_rhythm_ending = ["0.25-->0.25-->0.25-->0.25",
 
 
 class produceMidi():
-	def __init__(self,bpm = 100):
+	def __init__(self,bpm = 60):
 		self.mid = MidiFile()
 		self.tempo = bpm2tempo(bpm)
 
@@ -133,6 +133,16 @@ class produceMidi():
 		else:
 			return nxt
 
+
+	def addDurations(self,melody,duration):
+		if len(melody) != len(duration):
+			print("duration list length does not match melody list length")
+			sys.exit()
+
+		for m,d in zip(melody,duration):
+			m.duration = float(d)
+
+		return melody
 	"""
 	Not used
 	def generate_duration(self,time_signiture = 4,num_of_bars = 12):

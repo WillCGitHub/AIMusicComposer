@@ -53,13 +53,12 @@ class Note():
 
 	def calc_duration(self):
 		"""# beat = # ticks / (ticks per beat )  """
-		self.duration = round((self.note_off_time - self.note_on_time)/self.ticks_per_beat,1) # Unit(duration) in beat
+		self.duration = round((self.note_off_time - self.note_on_time)/self.ticks_per_beat,3) # Unit(duration) in beat
+		if self.duration == 0:
+			self.duration = 0.125
 
 	def get_data(self):
 		return np.array([self.pitch,self.duration,self.velocity,self.note_on_time])
-
-
-
 
 
 
@@ -69,13 +68,55 @@ def listdir_nohidden(path):
 		if not f.startswith('.'):
 			yield f
 
+def abs_diff(a,b):
+	return abs(a-b)
+
+def regulateTime(time,ticks_per_beat):
+	#print("Time is: {}".format(time))
+	timeList = [6,4,3,2,1.5,1,0.75,0.5,0.375,0.333,0.25,0.1875,0.125]
+	time_in_beat = time / ticks_per_beat
+	#print("time in beat: {}".format(time_in_beat))
+	accurateBeat = 0
+
+	if time_in_beat in timeList:
+		#print("in list")
+		return time
+
+	if time_in_beat < timeList[-1]:
+		#print("{} is Smaller than last one".format(time_in_beat))
+		return 0
+
+	for idx in range(0,len(timeList)-1):
+		curr_time = timeList[idx]
+		nxt_time = timeList[idx+1]
+		if (idx == 0) and (time_in_beat > curr_time):
+			accurateBeat = curr_time 
+			#print("time {} greater than first item")
+			break
+		if (time_in_beat < curr_time) and (time_in_beat > nxt_time):
+			#print("time {} in the interval {} {}".format(time_in_beat,curr_time,nxt_time))
+			diff_to_curr = abs_diff(time_in_beat,curr_time)
+			diff_to_nxt = abs_diff(time_in_beat,nxt_time)
+			if diff_to_curr >= diff_to_nxt:
+				accurateBeat = nxt_time
+			else:
+				accurateBeat = curr_time
+			break
+
+
+
+	#print("accurate beat {}".format(accurateBeat))
+	result = accurateBeat * ticks_per_beat
+	return result
+
+
 
 def analyze_file(midi_path):
 
 	mid = mido.MidiFile(midi_path)
 
 	data = []
-
+	pitchDict = rw.load_obj("pitch_dict")
 	for i, track in enumerate(mid.tracks):
 		current_time = 0
 		note_dict = dict()
@@ -93,11 +134,14 @@ def analyze_file(midi_path):
 					
 
 				if message.type == "note_on" or message.type == "note_off":
-
-					current_time += message.time
+					message_time = message.time
+					message_time = regulateTime(message_time,mid.ticks_per_beat)
+					current_time += message_time
 					#print(message)
 					midi_bytes = message.bytes()
 					temp = Note(midi_bytes[1],midi_bytes[2],float(mid.ticks_per_beat))
+					#print(current_time)
+					#print(pitchDict.get(midi_bytes[1]))
 					if message.type == "note_on":
 						temp.note_on_time = current_time
 						if note_dict.get(temp.pitch) is None:
@@ -127,12 +171,17 @@ def analyze_file(midi_path):
 
 	return df
 
-def list2DF(sortedList):
-	data = []
+def list2DF(sortedList,mode = 'melody'):
+	data = []	
 
 	for s in sortedList:
-		row = [s[1][0],s[1][1],s[1][2],s[0]]
-		data.append(row)
+		if mode == 'melody':
+			row = [s[1][0],s[1][1],s[1][2],s[0]]
+			data.append(row)
+		elif mode == 'chord':
+			for chords in s[1]:
+				row = [chords[0],chords[1],chords[2],s[0]]
+				data.append(row)
 
 	df = pd.DataFrame(data = data, columns = ["Pitch","Duration","Velocity","Time"])
 	return df
@@ -154,55 +203,35 @@ def splitMelodyAndChord(df):
 
 
 
-	for k in timeLineDict.keys():
-		data = timeLineDict.get(k)
-		df = pd.DataFrame(data = data, columns = ["Pitch","Duration","Velocity"])
-		timeLineDict[k] = df
-
 	chordDict = dict()
-	for k,v in timeLineDict.items():
-		if len(v['Pitch']) >= 2:
-			chord = list(v['Pitch'])
-			durations = min(list(v['Duration']))
-			velocities = max(list(v['Velocity']))
-			chordResult = cr.checkChords(chord)
-			if chordResult is not None:
-				chordDict[k] = [chordResult,durations,velocities]
-				# print("time: {}, chords: {}, result:{}\n".format(k,chord,chordResult))
-
 	melodyDict = dict()
+	pitchDict = rw.load_obj("pitch_dict")
+	for k,v in sorted(timeLineDict.items(),key=operator.itemgetter(0)):
+		#print(k)
+		if len(v) == 1:
+			melodyDict[k] = v[0]
+			#print("{} ".format(pitchDict.get(v[0][0])))
+		elif len(v) >= 2:
 
+			pitchSet = [val[0] for val in v]
+			"""
+			print("=======")
+			for p in pitchSet:
+				print("{} ".format(pitchDict.get(p)),end='')
+			print("\n=======\n")
+			"""
+			durationSet = [val[1] for val in v]
+			velocitySet = [val[2] for val in v]
+			chordDict[k] = v
+			melodyDict[k] = [min(pitchSet),min(durationSet),max(velocitySet)]
 
-	for k,v in timeLineDict.items():
-		haschord = chordDict.get(k)
-		remainingNote = list(v['Pitch'])
-		value = None
-		if haschord is not None:
-
-			for c in haschord[0]:
-
-				remainingNote = list(set(remainingNote)- set(c))
-				#print("all:{}\nthe chord:{}\nresult:{}\n".format(list(v['Pitch']),list(c),remainingNote))
-
-			if len(remainingNote) > 1:
-				#print("all:{} the chord:{} result:{}".format(list(v['Pitch']),list(c),remainingNote))
-				pass
-
-			elif len(remainingNote) == 1:
-				value = remainingNote[0]
-		else:
-			value = list(v['Pitch'])[0]
-		if value is not None:
-			durations = min(list(v['Duration']))
-			velocities = max(list(v['Velocity']))
-			melodyDict[k] = [value,durations,velocities]
-			#print(value)
 
 	sortedMelody = list(sorted(melodyDict.items(),key =operator.itemgetter(0)))
 	sortedChord = list(sorted(chordDict.items(),key = operator.itemgetter(0)))
 
-	melodyDF = list2DF(sortedMelody)
-	chordDF = list2DF(sortedChord)
+
+	melodyDF = list2DF(sortedMelody,mode = 'melody')
+	chordDF = list2DF(sortedChord,mode = 'chord')
 
 
 	return melodyDF,chordDF
@@ -266,7 +295,7 @@ if __name__ == "__main__":
 	MIDI_list = ef.listdir_nohidden(abs_path)
 	total_result = []
 	for a in MIDI_list:
-
+		print(a)
 		df = analyze_file(a)
 		break
 
@@ -278,46 +307,52 @@ if __name__ == "__main__":
 	dfLower = df[df['Label'] == 1]
 
 	#print(dfUpper)
-	pitch = list(dfUpper['Pitch'])
-	tempP = [str(int(p)) for p in pitch]
-
-	duration = list(dfUpper['Duration'])
-	tempD = [str(d) for d in duration]
+	melodyDFU,chordDFU = splitMelodyAndChord(dfUpper)
+	melodyDF, chordDF = splitMelodyAndChord(dfLower)
 
 
+	print(melodyDFU)
+	"""
+	upperX = []
+	upperY = []
+	lowerX = []
+	lowerY = []
 
-	hh = hh.HMMHelper(tempP,tempD)
+	for row in melodyDF.iterrows():
+		upperY.append(row[1][0])
+		upperX.append(row[1][3])
 
-	pitchUniqueState = hh.findUniqueStates(pitch)
-	durationUniqueState = hh.findUniqueStates(duration,t="origin")
-	trans_prob = hh.calculateTransitionMatrix()
-	emit_prob = hh.calculateEmissionMatrix()
-	hh.calculateInitialDistribution()
-	start_prob = hh.initialDistributionDict
-	model = HMM.Model(durationUniqueState, pitchUniqueState, start_prob, trans_prob, emit_prob)
-
-
-	STATES_NUM = 3
-
-	MIDI_path = "MIDI/test"
+	for row in chordDF.iterrows():
+		lowerY.append(row[1][0])
+		lowerX.append(row[1][3])
 
 
 
-	num_of_states = STATES_NUM
+	upperUX = []
+	upperUY = []
+	lowerUX = []
+	lowerUY = []
 
-	markov_p = ef.extract(MIDI_path,num_of_states,"test")
-	pm = produceMidi.produceMidi()
-	melody = pm.generate_melody(60,num_of_states,markov_p,init = 'bounded')
-	sequence = []
-	for m in melody:
-		sequence.append(str(m.pitch))
-	print(sequence)
-	print(model.evaluate(sequence))
-	print(model.decode(sequence))
+	for row in melodyDFU.iterrows():
+		upperUY.append(row[1][0])
+		upperUX.append(row[1][3])
+
+	for row in chordDFU.iterrows():
+		lowerUY.append(row[1][0])
+		lowerUX.append(row[1][3])
+
+	fig, ax = plt.subplots()
+
+	ax.scatter(upperX, upperY, color='r', marker='^', alpha=.4)
+	ax.scatter(lowerX, lowerY, color='b', marker='^', alpha=.4)
+	ax.scatter(upperUX, upperUY, color='r', marker='^', alpha=.4)
+	ax.scatter(lowerUX, lowerUY, color='b', marker='^', alpha=.4)
+
+	plt.show()
 
 
 
-
+	"""
 
 
 
@@ -327,26 +362,6 @@ if __name__ == "__main__":
 
 
 	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
