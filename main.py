@@ -16,13 +16,19 @@ import sys
 
 
 if __name__=="__main__":
-	abs_path = "MIDI/Mozart"
+	abs_path = "MIDI"
+	MIDI_list = ef.listdir_nohidden(abs_path)
+	list_len = 0
+	for mid in MIDI_list:
+		list_len+=1
 	MIDI_list = ef.listdir_nohidden(abs_path)
 	total_result = []
 	totalP = []
 	totalD = []
-	for a in MIDI_list:
+
+	for idx, a in enumerate(MIDI_list):
 		try:
+
 			df = midiP.analyze_file(a)
 
 
@@ -43,6 +49,9 @@ if __name__=="__main__":
 			totalD+=tempD
 		except:
 			pass
+		print("{0:.1f}% \r".format(float(idx/(list_len-1))*100),end='')
+
+		sys.stdout.flush()
 
 
 
@@ -51,24 +60,25 @@ if __name__=="__main__":
 
 	hh = hh.HMMHelper(totalP,totalD)
 
-	pitchUniqueState = hh.findUniqueStates(pitch)
-	durationUniqueState = hh.findUniqueStates(duration,t="origin")
+	pitchUniqueState = hh.findUniqueStates(totalP)
+	durationUniqueState = hh.findUniqueStates(totalD,t="origin")
 	trans_prob = hh.calculateTransitionMatrix()
 	emit_prob = hh.calculateEmissionMatrix()
 	hh.calculateInitialDistribution()
 	start_prob = hh.initialDistributionDict
+	print("HMM Modeling...")
 	model = HMM.Model(durationUniqueState, pitchUniqueState, start_prob, trans_prob, emit_prob)
 
 
 	STATES_NUM = 5
 
-	MIDI_path = "MIDI/Mozart"
+	MIDI_path = "MIDI"
 
 
 
 	num_of_states = STATES_NUM
 
-	markov_p = ef.extract(MIDI_path,num_of_states,"Mozart")
+	markov_p = ef.extract(MIDI_path,num_of_states,"test")
 	pm = produceMidi.produceMidi()
 	
 	

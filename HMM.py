@@ -382,7 +382,11 @@ if __name__ == '__main__':
     }
 
     sequence = ['walk', 'shop', 'clean', 'clean', 'walk', 'walk', 'walk', 'clean']
-    model = Model(states, symbols, start_prob, trans_prob, emit_prob)
-
-    print (model.evaluate(sequence))
-    print (model.decode(sequence))
+    #model = Model(states, symbols, start_prob, trans_prob, emit_prob)
+    model = Model(states, symbols)
+    model.learn(sequence)
+    print(model._start_prob)
+    print(model._trans_prob)
+    print(model._emit_prob)
+    #print (model.evaluate(sequence))
+    #print (model.decode(sequence))

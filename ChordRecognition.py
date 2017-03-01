@@ -19,9 +19,6 @@ class ChordRecognition:
 	def __init__(self):
 		self.listOfNotes = []
 
-	def findBase(self,notes):
-		return min(notes)
-
 	def calculateIntervals(self,notes):
 		diff = np.diff(notes)
 		for idx, d in enumerate(diff):
@@ -29,26 +26,70 @@ class ChordRecognition:
 
 		return diff
 
-	def constructChord(self,diff):
-		c = [1]
-		for idx, d in enumerate(diff):
-			c.append(d+c[idx])
-		return c
+	def constructChord(self,notes):
+		notes = sorted(notes)
+
+		if len(notes) == 2:
+			diff = self.calculateIntervals(notes)
+
+			quotient = diff[0]/12
+			if quotient > 1:
+				notes[-1]-= int(12*(int(quotient)))
+
+		min_val = min(notes)
+
+		num_of_octave = int(min_val /12)
+
+		displacement = num_of_octave*12
+
+		constructedChord = []
+		for n in notes:
+			constructedChord.append(int(n-displacement+1))
+		return constructedChord
+
+
+
+	def inversion(self,combination,idx = 0):
+		"""
+		combination -- a list of numbers represent notes
+		idx 0 -- first inversion
+		idx 1 -- second inversion
+		"""
+		new_combo = combination[idx+1:]
+		for i in range(0,idx+1):
+			new_combo.append(combination[i]+12)
+
+
+		return new_combo
+
+	def constructChordDict(self):
+		chordConstructionDict_new = dict()
+		for combination,chordName in chordConstructionDict.items():
+			for pitchIdx,pitch in enumerate(pitchList):
+				l = [c+pitchIdx for c in list(combination)]
+				inversion1 = cr.inversion(l)
+				if len(l) >=3:
+					inversion2 = cr.inversion(l,idx=1)
+					chordConstructionDict_new[tuple(l)] = pitch+"-"+chordName
+					chordConstructionDict_new[tuple(inversion1)] = pitch+"-"+chordName+"-Inversion1"
+					chordConstructionDict_new[tuple(inversion2)] = pitch+"-"+chordName+"-Inversion2"
+					print(pitch+"-"+chordName,l,pitch+"-"+chordName+"-Inversion1",inversion1,pitch+"-"+chordName+"-Inversion2",inversion2)
+				else:
+					chordConstructionDict_new[tuple(l)] = pitch+"-"+chordName
+					chordConstructionDict_new[tuple(inversion1)] = pitch+"-"+chordName+"-Inversion1"
+					print(pitch+"-"+chordName,l,pitch+"-"+chordName+"-Inversion1",inversion1)
+		rw.save_obj(chordConstructionDict_new,"chordDict")
+
 
 	def isChord(self,notes):
-		diff = self.calculateIntervals(notes)
-		if len(diff) == 1:
-			if diff[0] > 12:
-				floor = math.floor(diff[0]/12)
-				diff[0] -= 12*floor
 
-		base = self.findBase(notes)
-		constructedChord = self.constructChord(diff)
-		temp = chordConstructionDict.get(tuple(constructedChord))
+		constructedChord = self.constructChord(notes)
+		chordDict = rw.load_obj("chordDict")
+		temp = chordDict.get(tuple(constructedChord))
 		if temp is None:
 			return False
 		if temp is not None:
-			#print(temp)
+			print(temp)
 			return True
 
 
@@ -102,6 +143,7 @@ class ChordRecognition:
 if __name__ == "__main__":
 
 	cr = ChordRecognition()
+	"""
 	notes = [60,66,69]
 	print(cr.findBase(notes))
 	diff = cr.calculateIntervals(notes)
@@ -109,11 +151,20 @@ if __name__ == "__main__":
 	n = ['C','C#,Db','D','D#,Eb','E','F','F#,Gb','G','G#,Ab','A',"A#,Bb","B"]
 	#for idx,note in enumerate(n):
 		#print((idx+1,note))
-	
+	"""	
 	pitchDict = rw.load_obj('pitch_dict')
-	print(pitchDict.get(45))
-	print(pitchDict.get(65))
-	print(cr.isChord([45,65]))
+	pitchList = ['C','C#','D','D#','E','F','F#','G','G#','A',"A#","B"]
+	#print(pitchDict.get(45))
+	#print(pitchDict.get(65))
+	#print(cr.isChord([45,65]))
+
+	print(cr.isChord([72,88]))
+
+
+
+
+
+
 
 
 

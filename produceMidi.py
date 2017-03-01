@@ -34,7 +34,7 @@ basic_rhythm_ending = ["0.25-->0.25-->0.25-->0.25",
 
 
 class produceMidi():
-	def __init__(self,bpm = 60):
+	def __init__(self,bpm = 100):
 		self.mid = MidiFile()
 		self.tempo = bpm2tempo(bpm)
 

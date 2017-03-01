@@ -54,6 +54,8 @@ class Note():
 	def calc_duration(self):
 		"""# beat = # ticks / (ticks per beat )  """
 		self.duration = round((self.note_off_time - self.note_on_time)/self.ticks_per_beat,3) # Unit(duration) in beat
+
+		# inaccurate MIDI file causes duration 0 notes
 		if self.duration == 0:
 			self.duration = 0.125
 
@@ -82,13 +84,16 @@ def regulateTime(time,ticks_per_beat):
 		#print("in list")
 		return time
 
-	if time_in_beat < timeList[-1]:
-		#print("{} is Smaller than last one".format(time_in_beat))
-		return 0
 
-	for idx in range(0,len(timeList)-1):
+	for idx in range(0,len(timeList)):
+		
 		curr_time = timeList[idx]
-		nxt_time = timeList[idx+1]
+
+		if idx < len(timeList)-1:
+			nxt_time = timeList[idx+1]
+		else:
+			nxt_time = 0
+
 		if (idx == 0) and (time_in_beat > curr_time):
 			accurateBeat = curr_time 
 			#print("time {} greater than first item")
@@ -119,6 +124,7 @@ def analyze_file(midi_path):
 	pitchDict = rw.load_obj("pitch_dict")
 	for i, track in enumerate(mid.tracks):
 		current_time = 0
+		current_beats = 0
 		note_dict = dict()
 		
 		
@@ -126,6 +132,9 @@ def analyze_file(midi_path):
 			if isinstance(message,mido.MetaMessage):
 				if message.type == "set_tempo":
 					tempo = message.tempo
+				if message.type == "time_signature":
+					beats_per_bar = message.denominator
+
 
 			if isinstance(message,mido.Message):
 				if message.type == "program_change":
@@ -134,14 +143,22 @@ def analyze_file(midi_path):
 					
 
 				if message.type == "note_on" or message.type == "note_off":
+
+					# get pitch and duration
+					midi_bytes = message.bytes()
+					temp = Note(midi_bytes[1],midi_bytes[2],float(mid.ticks_per_beat))
+
+
+					# calculate time
 					message_time = message.time
 					message_time = regulateTime(message_time,mid.ticks_per_beat)
 					current_time += message_time
-					#print(message)
-					midi_bytes = message.bytes()
-					temp = Note(midi_bytes[1],midi_bytes[2],float(mid.ticks_per_beat))
-					#print(current_time)
-					#print(pitchDict.get(midi_bytes[1]))
+					
+
+
+					
+
+
 					if message.type == "note_on":
 						temp.note_on_time = current_time
 						if note_dict.get(temp.pitch) is None:
@@ -155,15 +172,15 @@ def analyze_file(midi_path):
 							print("off before on")
 						curr_note = curr_notes.pop(0)
 						if curr_note.status is not True:
-							print("\n\n\n\n\n##############################")
-							print("ASSERTION ERORR HERE")
-							print("##############################\n\n\n\n\n")
+							print("ERORR HERE")
 						curr_note.status = False
 						curr_note.note_off_time = current_time
 						curr_note.calc_duration()
 						note_data = curr_note.get_data()
 
 						data.append(note_data)
+
+
 	
 		
 
@@ -310,8 +327,31 @@ if __name__ == "__main__":
 	melodyDFU,chordDFU = splitMelodyAndChord(dfUpper)
 	melodyDF, chordDF = splitMelodyAndChord(dfLower)
 
+	chordList = []
+	time = chordDF.iloc[0,3]
 
-	print(melodyDFU)
+
+	temp = []
+	for idx, row in enumerate(chordDF.iterrows()):
+		curr_pitch = row[1][0]
+		curr_time = row[1][3]
+		if time == curr_time:
+			temp.append(curr_pitch)
+		elif time!= curr_time:
+			chordList.append(temp)
+			time = curr_time
+			temp = [curr_pitch]
+
+	pitchDict = rw.load_obj("pitch_dict")
+	cr = CR.ChordRecognition()
+	for c in chordList:
+		if cr.isChord(c) is False:
+			if cr.checkChords(c) is None:
+				for note in c:
+					print(note, pitchDict.get(note),end =' ')
+			print("\n")
+
+
 	"""
 	upperX = []
 	upperY = []
@@ -349,10 +389,11 @@ if __name__ == "__main__":
 	ax.scatter(lowerUX, lowerUY, color='b', marker='^', alpha=.4)
 
 	plt.show()
-
-
-
 	"""
+
+
+
+
 
 
 
