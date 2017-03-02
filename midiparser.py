@@ -203,56 +203,37 @@ def list2DF(sortedList,mode = 'melody'):
 	df = pd.DataFrame(data = data, columns = ["Pitch","Duration","Velocity","Time"])
 	return df
 
-def splitMelodyAndChord(df):
-	cr = CR.ChordRecognition()
-	
-	timeLineDict = dict()
-	for row in df.iterrows():
-		pitch = int(row[1][0])
-		duration = row[1][1]
-		velocity = int(row[1][2])
-		time = int(row[1][3])
-		dictValue = timeLineDict.get(time)
-		if dictValue is None:
-			timeLineDict[time] = [[pitch,duration,velocity]]
-		else:
-			timeLineDict[time].append([pitch,duration,velocity])
 
+def getChordSequence(chordDF):
+	chordList = []
+	time = chordDF.iloc[0,3]
+	temp = []
+	for idx, row in enumerate(chordDF.iterrows()):
+		curr_pitch = row[1][0]
+		curr_time = row[1][3]
+		if time == curr_time:
+			temp.append(curr_pitch)
+		elif time!= curr_time:
+			chordList.append(temp)
+			time = curr_time
+			temp = [curr_pitch]
 
-
-	chordDict = dict()
-	melodyDict = dict()
 	pitchDict = rw.load_obj("pitch_dict")
-	for k,v in sorted(timeLineDict.items(),key=operator.itemgetter(0)):
-		#print(k)
-		if len(v) == 1:
-			melodyDict[k] = v[0]
-			#print("{} ".format(pitchDict.get(v[0][0])))
-		elif len(v) >= 2:
+	cr = CR.ChordRecognition()
+	chord_sequence = []
+	for c in chordList:
+		status,chord_name_list = cr.isChord(c)
+		if status is False:
+			chord_name_list = cr.checkChords(c)
+			if chord_name_list is None:
+				for note in c:
+					pritn("==========")
+					print(note, pitchDict.get(note),end =' ')
+					pritn("==========")
+		for chord in chord_name_list:
+			chord_sequence.append(chord)
 
-			pitchSet = [val[0] for val in v]
-			"""
-			print("=======")
-			for p in pitchSet:
-				print("{} ".format(pitchDict.get(p)),end='')
-			print("\n=======\n")
-			"""
-			durationSet = [val[1] for val in v]
-			velocitySet = [val[2] for val in v]
-			chordDict[k] = v
-			melodyDict[k] = [min(pitchSet),min(durationSet),max(velocitySet)]
-
-
-	sortedMelody = list(sorted(melodyDict.items(),key =operator.itemgetter(0)))
-	sortedChord = list(sorted(chordDict.items(),key = operator.itemgetter(0)))
-
-
-	melodyDF = list2DF(sortedMelody,mode = 'melody')
-	chordDF = list2DF(sortedChord,mode = 'chord')
-
-
-	return melodyDF,chordDF
-
+	return chord_sequence
 
 
 def labelingParts(df):
@@ -323,33 +304,20 @@ if __name__ == "__main__":
 	dfUpper = df[df['Label'] == 0]
 	dfLower = df[df['Label'] == 1]
 
-	#print(dfUpper)
-	melodyDFU,chordDFU = splitMelodyAndChord(dfUpper)
-	melodyDF, chordDF = splitMelodyAndChord(dfLower)
-
-	chordList = []
-	time = chordDF.iloc[0,3]
 
 
-	temp = []
-	for idx, row in enumerate(chordDF.iterrows()):
-		curr_pitch = row[1][0]
-		curr_time = row[1][3]
-		if time == curr_time:
-			temp.append(curr_pitch)
-		elif time!= curr_time:
-			chordList.append(temp)
-			time = curr_time
-			temp = [curr_pitch]
 
-	pitchDict = rw.load_obj("pitch_dict")
-	cr = CR.ChordRecognition()
-	for c in chordList:
-		if cr.isChord(c) is False:
-			if cr.checkChords(c) is None:
-				for note in c:
-					print(note, pitchDict.get(note),end =' ')
-			print("\n")
+
+
+
+	chordSequence = getChordSequence(dfLower)
+	print(chordSequence)
+
+
+
+
+
+
 
 
 	"""
