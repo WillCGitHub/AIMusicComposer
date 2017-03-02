@@ -18,6 +18,7 @@ chordConstructionDict = {(1,5,8):'Major',(1,4,8):'Minor',(1,5,8,11):'7th',
 class ChordRecognition:
 	def __init__(self):
 		self.listOfNotes = []
+		self.chordDict = rw.load_obj("chordDict")
 
 	def calculateIntervals(self,notes):
 		diff = np.diff(notes)
@@ -28,6 +29,9 @@ class ChordRecognition:
 
 	def constructChord(self,notes):
 		notes = sorted(notes)
+
+		if len(notes) == 1:
+			notes.append(notes[0])
 
 		if len(notes) == 2:
 			diff = self.calculateIntervals(notes)
@@ -80,17 +84,23 @@ class ChordRecognition:
 					print(pitch+"-"+chordName,l,pitch+"-"+chordName+"-Inversion1",inversion1)
 		rw.save_obj(chordConstructionDict_new,"chordDict")
 
+	def constructNameToChordDict(self):
+		chordDict = rw.load_obj("chordDict")
+		nameToChordDict = dict()
+		for k,v in chordDict.items():
+			nameToChordDict[v] = k
+
+		rw.save_obj(nameToChordDict,"nameToChordDict")
 
 	def isChord(self,notes):
 
 		constructedChord = self.constructChord(notes)
-		chordDict = rw.load_obj("chordDict")
-		temp = chordDict.get(tuple(constructedChord))
+		
+		temp = self.chordDict.get(tuple(constructedChord))
 		if temp is None:
-			return False
+			return False,[]
 		if temp is not None:
-			print(temp)
-			return True
+			return True, [temp]
 
 
 	def checkChords(self,notes):
@@ -99,8 +109,8 @@ class ChordRecognition:
 
 		if len(notes) >= 2: 
 
-			if self.isChord(notes):
-				return [notes]
+			#if self.isChord(notes):
+				#return [notes]
 
 
 			currLen = len(notes)
@@ -119,8 +129,9 @@ class ChordRecognition:
 			result = []
 			for idx, c in enumerate(chordEnumeration):
 				if len(c) > 1:
-					if self.isChord(c):
-						result.append(c)
+					status,chordList = self.isChord(c)
+					if status:
+						result.append(chordList[0])
 						for inner_idx in range(idx,len(chordEnumeration)):
 							chordEnumeration[inner_idx] = list(set(chordEnumeration[inner_idx]) - set(c))
 
@@ -158,7 +169,7 @@ if __name__ == "__main__":
 	#print(pitchDict.get(65))
 	#print(cr.isChord([45,65]))
 
-	print(cr.isChord([72,88]))
+	cr.constructNameToChordDict()
 
 
 
