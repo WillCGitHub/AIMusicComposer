@@ -6,7 +6,7 @@ from collections import Counter, OrderedDict
 
 
 class HMMHelper():
-	def __init__(self,observedSet,hiddenSet):
+	def __init__(self,observedSet ,hiddenSet):
 		self.observedSet = observedSet
 		self.hiddenSet = hiddenSet
 		self.transitionMatrix = None
@@ -49,14 +49,15 @@ class HMMHelper():
 
 		transitionMatrixDict = dict()
 
-		for (state,valueDict) in sorted(transitionDict.items(),key=lambda i:(float(i[0]))):
+
+		for (state,valueDict) in transitionDict.items():
 
 			total_number_of_states = 0
 			temp = dict()
 			
 			for k,v in valueDict.items():
 					total_number_of_states+=v
-			for (k,v) in sorted(valueDict.items(),key=lambda i:(float(i[0]))):
+			for (k,v) in valueDict.items():
 				if total_number_of_states != 0:
 					prob = v/total_number_of_states
 				else:
@@ -64,6 +65,7 @@ class HMMHelper():
 				temp[k] = prob
 
 			transitionMatrixDict[state] = temp
+
 
 
 		return transitionMatrixDict
@@ -99,13 +101,14 @@ class HMMHelper():
 
 
 		emissionMatrixDict = dict()
-		for (state,valueDict) in sorted(emissionDict.items(),key=lambda i:(float(i[0]))):
+
+		for (state,valueDict) in emissionDict.items():
 
 			total_number_of_states = 0
 			temp = dict()
 			for k,v in valueDict.items():
 					total_number_of_states+=v
-			for k,v in sorted(valueDict.items(),key=lambda i:(float(i[0]))):
+			for k,v in valueDict.items():
 				if total_number_of_states != 0:
 					prob = v/total_number_of_states
 				else:

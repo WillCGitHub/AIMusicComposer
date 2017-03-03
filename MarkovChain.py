@@ -13,6 +13,9 @@ class MarkovState:
 	def __key(self):
 		return str(self.data)
 
+	def __len__(self):
+		return len(self.rate_table)
+
 	def __hash__(self):
 		return hash(self.__key())
 
@@ -154,16 +157,14 @@ class MarkovChain:
 				self.state_chain[str(k)] += k
 
 	def get_next_state(self,curr):
-		"""
-		TODO: if ms is None
-		"""
+
 
 		ms = self.state_chain.get(curr)  # get the MarkovState object
 
 		if ms is None:
 
 			return None
-		#print("curr:{}, ms:{}".format(curr,ms))
+
 		randInt = random.randint(1,100)
 
 		curr_num = 0
@@ -181,8 +182,24 @@ class MarkovChain:
 		return k
 
 	def get_state_chain_table(self):
-
 		return self.state_chain
+
+
+	def get_most_freq_used_chords(self,num_of_chords = 5):
+		"""
+		num_of_chords: the number of most freqeunt chords need to be returned 
+		default chords number is 5
+		"""
+		max_len = 0
+		result = []
+		for k,v in self.state_chain.items():
+			if len(v) > max_len:
+				max_len = len(v)
+				#result.append((k,len(v)))
+				result.append(k)
+				if len(result) > num_of_chords:
+					result.pop(0)
+		return result
 
 
 	

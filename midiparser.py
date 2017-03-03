@@ -3,6 +3,7 @@ import os
 import random
 import operator
 
+
 from sklearn.cluster import KMeans
 import numpy as np
 import pandas as pd
@@ -188,53 +189,6 @@ def analyze_file(midi_path):
 
 	return df
 
-def list2DF(sortedList,mode = 'melody'):
-	data = []	
-
-	for s in sortedList:
-		if mode == 'melody':
-			row = [s[1][0],s[1][1],s[1][2],s[0]]
-			data.append(row)
-		elif mode == 'chord':
-			for chords in s[1]:
-				row = [chords[0],chords[1],chords[2],s[0]]
-				data.append(row)
-
-	df = pd.DataFrame(data = data, columns = ["Pitch","Duration","Velocity","Time"])
-	return df
-
-
-def getChordSequence(chordDF):
-	chordList = []
-	time = chordDF.iloc[0,3]
-	temp = []
-	for idx, row in enumerate(chordDF.iterrows()):
-		curr_pitch = row[1][0]
-		curr_time = row[1][3]
-		if time == curr_time:
-			temp.append(curr_pitch)
-		elif time!= curr_time:
-			chordList.append(temp)
-			time = curr_time
-			temp = [curr_pitch]
-
-	pitchDict = rw.load_obj("pitch_dict")
-	cr = CR.ChordRecognition()
-	chord_sequence = []
-	for c in chordList:
-		status,chord_name_list = cr.isChord(c)
-		if status is False:
-			chord_name_list = cr.checkChords(c)
-			if chord_name_list is None:
-				for note in c:
-					pritn("==========")
-					print(note, pitchDict.get(note),end =' ')
-					pritn("==========")
-		for chord in chord_name_list:
-			chord_sequence.append(chord)
-
-	return chord_sequence
-
 
 def labelingParts(df):
 
@@ -252,6 +206,9 @@ def labelingParts(df):
 
 	df['Label'] = pd.Series(np.array(X_label))
 	return df
+
+
+
 
 
 def plot(df):
@@ -292,72 +249,32 @@ if __name__ == "__main__":
 	abs_path = "MIDI/test"
 	MIDI_list = ef.listdir_nohidden(abs_path)
 	total_result = []
+	matchDict = None
 	for a in MIDI_list:
 		print(a)
-		df = analyze_file(a)
-		break
-
-	labeledDF = labelingParts(df)
-
-	#plot(labeledDF)
-
-	dfUpper = df[df['Label'] == 0]
-	dfLower = df[df['Label'] == 1]
-
+		try:
+			df = analyze_file(a)
+			df = labelingParts(df)
+			dfUpper = df[df['Label'] == 0]
+			dfLower = df[df['Label'] == 1]
+			matchDict = ef.match(dfUpper,dfLower,matchDict)
+		except:
+			pass
 
 
 
 
-
-
-	chordSequence = getChordSequence(dfLower)
-	print(chordSequence)
-
-
+	freqDict = ef.getFreqDict(matchDict)
+	ef.printFreqDict(freqDict)
+	
 
 
 
+	
 
 
 
-	"""
-	upperX = []
-	upperY = []
-	lowerX = []
-	lowerY = []
 
-	for row in melodyDF.iterrows():
-		upperY.append(row[1][0])
-		upperX.append(row[1][3])
-
-	for row in chordDF.iterrows():
-		lowerY.append(row[1][0])
-		lowerX.append(row[1][3])
-
-
-
-	upperUX = []
-	upperUY = []
-	lowerUX = []
-	lowerUY = []
-
-	for row in melodyDFU.iterrows():
-		upperUY.append(row[1][0])
-		upperUX.append(row[1][3])
-
-	for row in chordDFU.iterrows():
-		lowerUY.append(row[1][0])
-		lowerUX.append(row[1][3])
-
-	fig, ax = plt.subplots()
-
-	ax.scatter(upperX, upperY, color='r', marker='^', alpha=.4)
-	ax.scatter(lowerX, lowerY, color='b', marker='^', alpha=.4)
-	ax.scatter(upperUX, upperUY, color='r', marker='^', alpha=.4)
-	ax.scatter(lowerUX, lowerUY, color='b', marker='^', alpha=.4)
-
-	plt.show()
-	"""
 
 
 

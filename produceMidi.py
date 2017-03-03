@@ -5,29 +5,8 @@ import operator
 from RW_obj import *
 from mido import Message, MidiFile, MidiTrack, bpm2tempo, MetaMessage
 import MusicNote as mn
+import RW_obj as rw
 
-
-"""
-basic_rhythm = ["0.25-->0.25-->0.25-->0.25",
-				"0.125-->0.125-->0.125-->0.125-->0.25-->0.25",
-				"1.0",
-				"0.5-->0.5",
-				"1.5-->0.5",
-				"0.25-->0.25-->0.5",
-				"0.25-->0.25-->0.25-->0.25-->1.0",
-				"0.334-->0.333-->0.332"]
-"""
-basic_rhythm = ["0.25-->0.25-->0.25-->0.25",
-				"1.0",
-				"0.5-->0.5",
-				"1.5-->0.5",
-				"0.25-->0.25-->0.5",
-				"0.25-->0.25-->0.25-->0.25-->1.0"]
-
-basic_rhythm_ending = ["0.25-->0.25-->0.25-->0.25",
-					"1.0",
-					"0.5-->0.5",
-					"0.25-->0.25-->0.5"]
 
 
 
@@ -38,49 +17,31 @@ class produceMidi():
 		self.mid = MidiFile()
 		self.tempo = bpm2tempo(bpm)
 
-
 	"""
-	num_of_notes --> how mnay notes of the current gneration
-	markov_d --> duration markov chain
-	num_of_states --> the number of states that the model will use to generate the melody
-	markov_p --> pitch markov chain 
-	markov_v --> velocity markov chain
-	p_init__diff_state --> initial pitch difference. Default == 2
-	v_init_state --> initial velocity. Default == 100
-	v_init_diff_state --> initial velocity difference. Default == 3
+	initial_states: most frequent used chords
+		default mode: get the most frequent used chord
+		random mode: get a random chord from the list 
 	"""
-	def generate_melody(self,num_of_notes,num_of_states,markov_p,init = 'default'):
+	def generate_melody(self,num_of_notes,num_of_states,markov_p, initial_p, mode = 'default'):
 
-		lower_init_pitch_bound = 60
-		upper_init_pitch_bound = 84
-		if init == 'default':
-			p_init_state = 60
-
-		elif init == 'random':
-			p_init_state = random.randint(lower_init_pitch_bound,upper_init_pitch_bound)
-
-		elif init == 'bounded':
-			p_init_state = random.choice([60,62,64,65,67,69])
-
-		else:
-			p_init_state = 60
-
+		if mode == 'default':
+			init_p = initial_p
 
 
 		# initialize the first note
-		init_mn = mn.MusicNote(p_init_state,1,100)
+		init_mn = mn.MusicNote(int(init_p),0.25,100)
 
 		# initialize the melody list
 		melody = []
 		melody.append(init_mn)
 
-		curr_p = str(p_init_state)
+		curr_p = init_p
 
 
 		generated_list_p = [curr_p]
 
 
-		for idx in range(0,num_of_notes):
+		for idx in range(0,num_of_notes-1):
 			randInt = random.randint(1,100)
 
 
@@ -93,15 +54,66 @@ class produceMidi():
 			generated_list_p.append(nxt_p)
 
 
-			curr_mn = mn.MusicNote(curr_p,1,100)
+			curr_mn = mn.MusicNote(int(curr_p),0.25,100)
 			melody.append(curr_mn)
 
 
 			curr_p = str(nxt_p)
 
 
-
 		return melody
+
+
+
+	"""
+	initial_states: most frequent used chords
+		default mode: get the most frequent used chord
+		random mode: get a random chord from the list 
+	"""
+	def generate_chord_progression(self,num_of_notes,num_of_states,markov_CP, initial_states, mode = 'default'):
+
+		if mode == 'default':
+			init_chord = initial_states[-1]
+		elif mode == 'random':
+			init_chord = random.choice(initial_states)
+
+
+
+
+		# initialize the first note
+		init_mn = mn.MusicNote(init_chord,1,100)
+
+		# initialize the CP list
+		chord_progression = []
+		chord_progression.append(init_mn)
+
+		curr_c = init_chord
+
+
+		generated_list_c = [curr_c]
+
+
+		for idx in range(0,num_of_notes):
+			randInt = random.randint(1,100)
+
+
+			nxt_c = self.get_next_by_multi_state(generated_list_c,markov_CP,num_of_states)
+
+			if nxt_c is None:
+				nxt_c = generated_list_c[-1]
+
+
+			generated_list_c.append(nxt_c)
+
+
+			curr_mn = mn.MusicNote(curr_c,1,100)
+			chord_progression.append(curr_mn)
+
+
+			curr_c = nxt_c
+
+
+		return chord_progression
 
 
 	def get_next_by_multi_state(self,generated_list,markov_chain,num_of_states):
@@ -143,47 +155,59 @@ class produceMidi():
 			m.duration = float(d)
 
 		return melody
-	"""
-	Not used
-	def generate_duration(self,time_signiture = 4,num_of_bars = 12):
-		rhythm_list = []
-		total_length = num_of_bars*time_signiture
-		while(total_length > 0):
-			if total_length == 1:
-				randInt = random.randint(0,len(basic_rhythm_ending)-1)
-				rhythm = basic_rhythm_ending[randInt]
-			else:
-				randInt = random.randint(0,len(basic_rhythm)-1)
-				rhythm = basic_rhythm[randInt]
-			
-			temp_total = 0
-			for t in rhythm.split("-->"):
-				rhythm_list.append(t)
-				temp_total+=float(t)
 
 
-			total_length -= temp_total
-
-		return rhythm_list
-	"""
-
-	def produce_new_track(self,melody):
+	def produce_new_track(self,melody,mode="melody"):
 		self.track = MidiTrack()
 		self.mid.tracks.append(self.track)
 		self.track.append(MetaMessage("set_tempo",tempo = self.tempo,time=0))
 		self.track.append(Message('program_change', program=1, time=0))
-		curr_time = 0
 		for mn in melody:
-			self.append_note(mn)
+			self.append_note(mn,mode=mode)
 
 
-	def append_note(self,music_note):
-		self.track.append(Message('note_on',note=int(music_note.pitch),velocity = music_note.velocity,time =0))
-
-		self.track.append(Message('note_off',note=int(music_note.pitch),velocity = music_note.velocity,time = music_note.beat2tick(ticks_per_beat = 480)))
 
 
-		#self.track.append(Message('note_off',note=int(music_note.pitch),velocity = int(music_note.velocity),time = 96))
+
+	def append_note(self,music_note,mode):
+		if mode == "melody":
+			self.track.append(Message('note_on',note=int(music_note.pitch),velocity = music_note.velocity,time =0))
+			self.track.append(Message('note_off',
+								note=int(music_note.pitch),
+								velocity = music_note.velocity,
+								time = music_note.beat2tick(ticks_per_beat = 480)))
+		elif mode == "cp":
+			chordName = music_note.pitch
+			nameChordDict = rw.load_obj('nameToChordDict')
+			note_tuples = nameChordDict.get(str(chordName))
+			if len(note_tuples) == 2 and note_tuples[0] == note_tuples[1]:
+
+				temp_n = note_tuples[1]
+				temp_n+=12
+				new_tuple = (note_tuples[0],temp_n)
+				note_tuples = new_tuple
+
+			for note in note_tuples:
+
+				note+=48 # move displacement
+				self.track.append(Message('note_on',note=int(note),velocity = music_note.velocity,time =0))
+			for idx,note in enumerate(note_tuples):	
+
+				note+=48 # move displacement
+				if idx == 0:
+					self.track.append(Message('note_off',
+										note=int(note),
+										velocity = music_note.velocity,
+										time =music_note.beat2tick(480)))
+				else:
+					self.track.append(Message('note_off',
+										note=int(note),
+										velocity = music_note.velocity,
+										time = 0))
+
+
+
+		
 
 	def export_midi(self,f):
 		file_name = "".join([f,'.mid'])
@@ -195,8 +219,6 @@ class produceMidi():
 
 if __name__=='__main__':
 	pm = produceMidi()
-	l = [5]
-	print(l[-1:])
-	#pm.export_midi("test")
+
 
 

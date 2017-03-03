@@ -16,7 +16,7 @@ import sys
 
 
 if __name__=="__main__":
-	abs_path = "MIDI"
+	abs_path = "MIDI/test"
 	MIDI_list = ef.listdir_nohidden(abs_path)
 	list_len = 0
 	for mid in MIDI_list:
@@ -25,6 +25,7 @@ if __name__=="__main__":
 	total_result = []
 	totalP = []
 	totalD = []
+	totalChordSeq =[]
 
 	for idx, a in enumerate(MIDI_list):
 		try:
@@ -39,14 +40,16 @@ if __name__=="__main__":
 			dfUpper = df[df['Label'] == 0]
 			dfLower = df[df['Label'] == 1]
 
+			chordSequence = ef.getChordSequence(dfLower)
+			totalChordSeq+=chordSequence
 
-			pitch = list(dfUpper['Pitch'])
-			tempP = [str(int(p)) for p in pitch]
-			totalP+=tempP
+
 
 			duration = list(dfUpper['Duration'])
 			tempD = [str(d) for d in duration]
 			totalD+=tempD
+
+			break
 		except:
 			pass
 		print("{0:.1f}% \r".format(float(idx/(list_len-1))*100),end='')
@@ -58,21 +61,23 @@ if __name__=="__main__":
 
 
 
-	hh = hh.HMMHelper(totalP,totalD)
+	hh_pitch = hh.HMMHelper(totalP,totalD)
 
-	pitchUniqueState = hh.findUniqueStates(totalP)
-	durationUniqueState = hh.findUniqueStates(totalD,t="origin")
-	trans_prob = hh.calculateTransitionMatrix()
-	emit_prob = hh.calculateEmissionMatrix()
-	hh.calculateInitialDistribution()
-	start_prob = hh.initialDistributionDict
+	pitchUniqueState = hh_pitch.findUniqueStates(totalP)
+	durationUniqueState = hh_pitch.findUniqueStates(totalD,t="origin")
+	trans_prob = hh_pitch.calculateTransitionMatrix()
+	emit_prob = hh_pitch.calculateEmissionMatrix()
+	hh_pitch.calculateInitialDistribution()
+	start_prob = hh_pitch.initialDistributionDict
 	print("HMM Modeling...")
 	model = HMM.Model(durationUniqueState, pitchUniqueState, start_prob, trans_prob, emit_prob)
 
 
+
+	"""
 	STATES_NUM = 5
 
-	MIDI_path = "MIDI"
+	MIDI_path = "MIDI/test"
 
 
 
@@ -103,7 +108,7 @@ if __name__=="__main__":
 	melody = pm.addDurations(melody,durationList)
 	pm.produce_new_track(melody)
 	pm.export_midi("test")
-
+	"""
 
 
 

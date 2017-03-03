@@ -163,13 +163,16 @@ if __name__ == "__main__":
 	#for idx,note in enumerate(n):
 		#print((idx+1,note))
 	"""	
-	pitchDict = rw.load_obj('pitch_dict')
-	pitchList = ['C','C#','D','D#','E','F','F#','G','G#','A',"A#","B"]
+	#pitchDict = rw.load_obj('pitch_dict')
+	#pitchList = ['C','C#','D','D#','E','F','F#','G','G#','A',"A#","B"]
 	#print(pitchDict.get(45))
 	#print(pitchDict.get(65))
 	#print(cr.isChord([45,65]))
 
-	cr.constructNameToChordDict()
+	#cr.constructNameToChordDict()
+	nameChordDict = rw.load_obj('nameToChordDict')
+	for k,v in nameChordDict.items():
+		print(k)
 
 
 

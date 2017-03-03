@@ -13,7 +13,11 @@ class MusicNote:
 		self.velocity = velocity
 
 	def __str__(self):
-		return "-".join([pitch_dict.get(int(self.pitch)),str(self.duration),str(self.velocity)])
+		try:
+			r = "-".join([pitch_dict.get(int(self.pitch)),str(self.duration),str(self.velocity)])
+		except:
+			r = "-".join([str(self.pitch),str(self.duration),str(self.velocity)])
+		return r
 
 	def __repr__(self):
 		return (self.__str__())
