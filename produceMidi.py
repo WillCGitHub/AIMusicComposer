@@ -17,6 +17,13 @@ class produceMidi():
 		self.mid = MidiFile()
 		self.tempo = bpm2tempo(bpm)
 
+	def lastNotNoneNotes(self,lst):
+		for idx in range(1,len(lst)):
+			temp = lst[-idx]
+			if temp != -1:
+				return temp
+		return lst[0]
+
 	"""
 	initial_states: most frequent used chords
 		default mode: get the most frequent used chord
@@ -48,7 +55,7 @@ class produceMidi():
 			nxt_p = self.get_next_by_multi_state(generated_list_p,markov_p,num_of_states)
 
 			if nxt_p is None:
-				nxt_p = generated_list_p[-1]
+				nxt_p = self.lastNotNoneNotes(generated_list_p)
 
 
 			generated_list_p.append(nxt_p)
@@ -59,6 +66,9 @@ class produceMidi():
 
 
 			curr_p = str(nxt_p)
+
+		curr_mn = mn.MusicNote(int(curr_p),0.25,100)
+		melody.append(curr_mn)
 
 
 		return melody
@@ -81,7 +91,7 @@ class produceMidi():
 
 
 		# initialize the first note
-		init_mn = mn.MusicNote(init_chord,1,100)
+		init_mn = mn.MusicNote(init_chord,2,80)
 
 		# initialize the CP list
 		chord_progression = []
@@ -106,7 +116,7 @@ class produceMidi():
 			generated_list_c.append(nxt_c)
 
 
-			curr_mn = mn.MusicNote(curr_c,1,100)
+			curr_mn = mn.MusicNote(curr_c,2,80)
 			chord_progression.append(curr_mn)
 
 
@@ -114,6 +124,7 @@ class produceMidi():
 
 
 		return chord_progression
+
 
 
 	def get_next_by_multi_state(self,generated_list,markov_chain,num_of_states):
@@ -171,15 +182,30 @@ class produceMidi():
 
 	def append_note(self,music_note,mode):
 		if mode == "melody":
-			self.track.append(Message('note_on',note=int(music_note.pitch),velocity = music_note.velocity,time =0))
-			self.track.append(Message('note_off',
+			if int(music_note.pitch) != -1:
+				self.track.append(Message('note_on',
+											note=int(music_note.pitch),
+											velocity = int(music_note.velocity),
+											time = 0))
+				self.track.append(Message('note_off',
 								note=int(music_note.pitch),
-								velocity = music_note.velocity,
+								velocity = int(music_note.velocity),
 								time = music_note.beat2tick(ticks_per_beat = 480)))
+			else:
+				self.track.append(Message('note_on',
+											note= 0,
+											velocity = 0,
+											time = 0))
+				self.track.append(Message('note_off',
+								note= 0,
+								velocity = 0,
+								time = music_note.beat2tick(ticks_per_beat = 480)))
+			
 		elif mode == "cp":
 			chordName = music_note.pitch
 			nameChordDict = rw.load_obj('nameToChordDict')
 			note_tuples = nameChordDict.get(str(chordName))
+
 			if len(note_tuples) == 2 and note_tuples[0] == note_tuples[1]:
 
 				temp_n = note_tuples[1]
@@ -187,13 +213,21 @@ class produceMidi():
 				new_tuple = (note_tuples[0],temp_n)
 				note_tuples = new_tuple
 
-			for note in note_tuples:
+			for idx, note in enumerate(note_tuples):
 
 				note+=48 # move displacement
-				self.track.append(Message('note_on',note=int(note),velocity = music_note.velocity,time =0))
+				note-=1  # dict difference with MIDI
+
+				self.track.append(Message('note_on',
+							note=int(note),
+							velocity = music_note.velocity,
+							time =music_note.beat2tick(0)))
+
+
 			for idx,note in enumerate(note_tuples):	
 
 				note+=48 # move displacement
+				note-=1
 				if idx == 0:
 					self.track.append(Message('note_off',
 										note=int(note),

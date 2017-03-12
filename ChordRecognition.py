@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 import RW_obj as rw
-
+"""
 chordConstructionDict = {(1,5,8):'Major',(1,4,8):'Minor',(1,5,8,11):'7th',
 							(1,5,8,12):'Major 7th',(1,4,8,11):'Minor 7th',
 							(1,5,8,10):'6th',(1,4,8,10):'Minor 6th',(1,4,7):'Diminished',
@@ -14,11 +14,27 @@ chordConstructionDict = {(1,5,8):'Major',(1,4,8):'Minor',(1,5,8,11):'7th',
 							(1,4,8,12,15,18,22):'Minor 13th',(1,6,8):'sus4',(1,3,8):'sus2',(1,8):'5th',
 							(1,2):'m2',(1,3):'M2',(1,4):'m3',(1,5):'M3',(1,6):'P4',(1,7):'TT',
 							(1,9):'m6',(1,10):'M6',(1,11):'m7',(1,12):'M7',(1,13):'P8',(1,1):'U'}
-
+"""
+chordConstructionDict = {(1,5,8):'Major',(1,4,8):'Minor',(1,5,8,11):'7th',
+							(1,5,8,12):'Major 7th',(1,4,8,11):'Minor 7th',
+							(1,5,8,10):'6th',(1,4,8,10):'Minor 6th',(1,4,7):'Diminished',
+							(1,4,7,10):'Diminished 7th',(1,4,7,11):'Hal diminished 7th',
+							(1,5,9):'Augmented',(1,5,9,11):'7th #5',(1,5,8,11,15):'9th',
+							(1,5,8,11,16):'7th #9',(1,5,8,12,15):'Major 9th',(1,5,8,15):'Added 9th',
+							(1,4,8,11,15):'Minor 9th',(1,4,8,15):'Minor add 9th',(1,5,8,11,15,18):'11th',
+							(1,4,8,11,15,18):'Minor 11th',(1,5,8,11,15,19):'Major 7th #11',(1,5,8,12,15,22):'13th',
+							(1,4,8,12,15,18,22):'Minor 13th',(1,6,8):'sus4',(1,3,8):'sus2',(1,8):'5th',
+							(1,2):'m2',(1,3):'M2',(1,4):'m3',(1,5):'M3',(1,6):'P4',(1,7):'TT',
+							(1,9):'m6',(1,10):'M6',(1,11):'m7',(1,12):'M7',(1,13):'P8'}
 class ChordRecognition:
 	def __init__(self):
 		self.listOfNotes = []
-		self.chordDict = rw.load_obj("chordDict")
+		try:
+			self.chordDict = rw.load_obj("chordDict")
+		except:
+			# construct if not exist
+			self.constructChordDict()
+			self.constructNameToChordDict()
 
 	def calculateIntervals(self,notes):
 		diff = np.diff(notes)
@@ -68,12 +84,13 @@ class ChordRecognition:
 
 	def constructChordDict(self):
 		chordConstructionDict_new = dict()
+		pitchList = ['C','C#','D','D#','E','F','F#','G','G#','A',"A#","B"]
 		for combination,chordName in chordConstructionDict.items():
 			for pitchIdx,pitch in enumerate(pitchList):
 				l = [c+pitchIdx for c in list(combination)]
-				inversion1 = cr.inversion(l)
+				inversion1 = self.inversion(l)
 				if len(l) >=3:
-					inversion2 = cr.inversion(l,idx=1)
+					inversion2 = self.inversion(l,idx=1)
 					chordConstructionDict_new[tuple(l)] = pitch+"-"+chordName
 					chordConstructionDict_new[tuple(inversion1)] = pitch+"-"+chordName+"-Inversion1"
 					chordConstructionDict_new[tuple(inversion2)] = pitch+"-"+chordName+"-Inversion2"
@@ -169,10 +186,8 @@ if __name__ == "__main__":
 	#print(pitchDict.get(65))
 	#print(cr.isChord([45,65]))
 
-	#cr.constructNameToChordDict()
-	nameChordDict = rw.load_obj('nameToChordDict')
-	for k,v in nameChordDict.items():
-		print(k)
+	
+
 
 
 

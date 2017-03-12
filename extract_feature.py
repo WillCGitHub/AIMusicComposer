@@ -61,9 +61,10 @@ def getChordSequence(chordDF):
 			chord_name_list = cr.checkChords(c[0])
 			if chord_name_list is None:
 				for note in c:
-					pritn("==========")
-					print(note, pitchDict.get(note),end =' ')
-					pritn("==========")
+					print("==========")
+					#print(note, pitchDict.get(note),end =' ')
+					print("==========")
+					chord_name_list = []
 		for chord in chord_name_list:
 			chord_sequence.append((chord,c[1],c[2]*480+c[1])) # (chord,start time, end time)
 			chordOnly_sequence.append(chord)
@@ -84,14 +85,17 @@ def match(dfUpper,dfLower, matchDict = None):
 
 	if matchDict is None:
 		matchDict = dict()
-	for idx in range(0,len(chordSequence)):
+	for idx in range(0,len(chordSequence)-1):
+
 		for inner_idx in range(len(melodyList)):
 
 			pitch = int(melodyList[inner_idx][0])
 			time = melodyList[inner_idx][3]
+
+
 			if time < chordSequence[idx][1]:
 				pass
-			elif time >= chordSequence[idx][1] and time < chordSequence[idx][2]:
+			elif time >= chordSequence[idx][1] and time <= chordSequence[idx][2]:
 				#within range
 				if matchDict.get(chordSequence[idx][0]) is None:
 					matchDict[chordSequence[idx][0]] = [pitch]
@@ -99,8 +103,9 @@ def match(dfUpper,dfLower, matchDict = None):
 					matchDict[chordSequence[idx][0]].append(pitch)
 			else:
 				break
+
 		#get rid off used melodies
-		melodyList = melodyList[inner_idx:]
+
 
 	return matchDict
 
@@ -110,7 +115,6 @@ def getFreqDict(matchDict):
 	"""
 	freqDict = dict()
 	for k,mList in matchDict.items():
-
 		freq = Counter(mList)
 		total_num = len(mList)
 
@@ -167,9 +171,12 @@ def extract(MIDI_path,num_of_states,table_name):
 		
 	markov_CP = mc.MarkovChain() # chord progression
 	markov_p = mc.MarkovChain() # pitch mc
+	markov_v = mc.MarkovChain() # velocity mc
 	matchDict = None 
 	totalD_M = [] # melody durations
 	totalD_C = [] # chord durations
+	totalP = []
+	totalV = []
 	complete_chord_sequence = []
 	for midi_file in midi_path_list:
 		
@@ -182,21 +189,28 @@ def extract(MIDI_path,num_of_states,table_name):
 			chordSequence,chordOnly_sequence = getChordSequence(dfLower)
 			complete_chord_sequence += chordOnly_sequence
 
+			ptemp = [int(p) for p in list(dfUpper.loc[:,'Pitch'])]
+			ptempHMM = [str(int(p)) for p in list(dfUpper.loc[:,'Pitch'])]
+			totalP+=ptempHMM
 			duration_M = list(dfUpper['Duration'])
 			duration_C = list(dfLower['Duration'])
+
+			velocity = list(dfUpper['Velocity'])
 			tempD_M = [str(d) for d in duration_M]
 			tempD_C = [str(d) for d in duration_C]
+			tempV = [str(int(v)) for v in velocity]
 			totalD_M+=tempD_M
 			totalD_C+=tempD_C
+			totalV += tempV
 
 			for num_of_state in range(1,num_of_states+1):
-				ptemp = [int(p) for p in list(dfUpper.loc[:,'Pitch'])]
 				markov_p.addData_multi_dim(ptemp,num_of_state)
 				markov_CP.addData_multi_dim(chordOnly_sequence,num_of_state)
-
-
 		except:
 			pass
+
+
+		
 		
 
 
@@ -210,50 +224,44 @@ def extract(MIDI_path,num_of_states,table_name):
 
 
 
+	hh_v = hh.HMMHelper(totalP,totalV)
+
+	pitchUniqueState = hh_v.findUniqueStates(totalP,t = "origin")
+	velocityUniqueState = hh_v.findUniqueStates(totalV,t = "origin")
+	trans_prob = hh_v.calculateTransitionMatrix()
+	emit_prob = hh_v.calculateEmissionMatrix()
+	hh_v.calculateInitialDistribution()
+	start_prob = hh_v.initialDistributionDict
+	print("HMM Modeling...")
+	model = HMM.Model(velocityUniqueState, pitchUniqueState, start_prob, trans_prob, emit_prob)
+
 	print("training done")
 
 	#save_tables(table_name,num_of_states,markov_p)
 
-	return matchDict, markov_p,markov_CP,totalD_M,totalD_C,complete_chord_sequence
+	return matchDict, markov_p,markov_CP,totalD_M,totalD_C,complete_chord_sequence,model
 
 
 
 if __name__ == '__main__':
 	STATES_NUM = 5
 
-	MIDI_path = "MIDI/test"
+	MIDI_path = "MIDI/testChopin"
 	#MIDI_path = "MIDI/bach"
 
 
 	num_of_states = STATES_NUM
 
-	matchDict,markov_p, markov_CP, duration_M,duration_C, chordSeq = extract(MIDI_path,num_of_states,"test")
+	matchDict,markov_p, markov_CP, duration_M,duration_C, chordSeq,velocity_model = extract(MIDI_path,num_of_states,"test")
 
 	initial_states = markov_CP.get_most_freq_used_chords()
 	freqDict = getFreqDict(matchDict)
 
-	#markov_p = load_tables("all",num_of_states)
-
 	pm = produceMidi.produceMidi()
-	num_of_notes = 100
+	num_of_notes = 31  
 
 	CP = pm.generate_chord_progression(num_of_notes,num_of_states,markov_CP, initial_states, mode = 'default')
-
-	hh_chord = hh.HMMHelper(chordSeq,duration_C)
-
-	chordUniqueState = hh_chord.findUniqueStates(chordSeq,t="origin")
-	durationUniqueState = hh_chord.findUniqueStates(duration_C,t="origin")
-	trans_prob = hh_chord.calculateTransitionMatrix()
-	emit_prob = hh_chord.calculateEmissionMatrix()
-	hh_chord.calculateInitialDistribution()
-	start_prob = hh_chord.initialDistributionDict
-	print("HMM Modeling...")
-	model = HMM.Model(durationUniqueState, chordUniqueState, start_prob, trans_prob, emit_prob)
-
-
-
-
-
+	
 
 
 
@@ -263,39 +271,63 @@ if __name__ == '__main__':
 	melody_raw = []
 	melody = []
 	generated_chord_sequence = []
+
 	for c in CP:
 		chord = str(c.pitch)
+
 		emiss_dict = freqDict.get(chord)
 		if emiss_dict is None:
-			note = 0
+			print(chord)
+			note = -1
 		else:
 			note = getNoteFromEmissionDict(emiss_dict)
 		melody_raw.append(note)
-		generated_chord_sequence.append(chord)
 
-	chord_duration_list = model.decode(generated_chord_sequence)
 
-	for c, d in zip(CP,chord_duration_list):
-		c.duration = float(d)
 
+	for c in CP:
+		c.duration = 2
+
+	
+	pitch_velocity_list = []
 	for idx,m in enumerate(melody_raw):
-		duration = CP[idx].duration
-		num_of_notes = 1
-		#generated_m = pm.generate_melody(num_of_notes,num_of_states,markov_p, str(m))
-		note_duration = duration/num_of_notes
+		#duration = CP[idx].duration
+		num_of_notes = 7
+		if note != -1:
+			generated_m = pm.generate_melody(num_of_notes,num_of_states,markov_p, str(m))
+			melody_list = [str(int(mn.pitch)) for mn in generated_m]
+			pitch_velocity_list = velocity_model.decode(melody_list)
+		else:
+			generated_m = [-1 for idx in range(num_of_notes)]
+			melody_list = [str(m)]+[str(int(mn)) for mn in generated_m]
 
-		#for new_m in generated_m:
-			#new_m.duration = note_duration
-		melody.append(mn.MusicNote(m,note_duration,100))
-		#melody+=generated_m
 
+		note_duration=0.25
+
+
+
+		if len(pitch_velocity_list) != 0:
+			for m,v in zip(melody_list,pitch_velocity_list):
+				melody.append(mn.MusicNote(m,note_duration,int(v)))
+		else:
+			for m in melody_list:
+				melody.append(mn.MusicNote(m,note_duration,0))
+
+
+
+	
 	for m in melody:
-		print(m.pitch,m.duration)
+		print(m.pitch,m.duration,m.velocity)
+
+
+
+	"""
+	for c in CP:
+		print(c)
+	"""
 
 	pm.produce_new_track(CP,mode="cp")
 
 	pm.produce_new_track(melody)
 
-	pm.export_midi("test-{}".format(num_of_states))
-
-
+	pm.export_midi("test-chopin-{}".format(num_of_states))

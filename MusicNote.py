@@ -5,11 +5,7 @@ class MusicNote:
 	def __init__(self,pitch,duration,velocity):
 		self.pitch = pitch
 		self.duration = duration
-		if int(velocity) < 100:
-			v = int(velocity)
-			diff = 100 - v
-			v += round(diff/10)*10
-			velocity = str(v)
+
 		self.velocity = velocity
 
 	def __str__(self):

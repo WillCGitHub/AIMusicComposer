@@ -117,7 +117,7 @@ def regulateTime(time,ticks_per_beat):
 
 
 
-def analyze_file(midi_path):
+def analyze_file(midi_path,mode="default",count= 1):
 
 	mid = mido.MidiFile(midi_path)
 
@@ -127,9 +127,11 @@ def analyze_file(midi_path):
 		current_time = 0
 		current_beats = 0
 		note_dict = dict()
-		
+		prev_note = None
+		temp_time = 0
 		
 		for message in track:
+
 			if isinstance(message,mido.MetaMessage):
 				if message.type == "set_tempo":
 					tempo = message.tempo
@@ -154,38 +156,60 @@ def analyze_file(midi_path):
 					message_time = message.time
 					message_time = regulateTime(message_time,mid.ticks_per_beat)
 					current_time += message_time
-					
-
 
 					
 
 
-					if message.type == "note_on":
-						temp.note_on_time = current_time
-						if note_dict.get(temp.pitch) is None:
-							note_dict[temp.pitch] = [temp]
-						else:
-							note_dict.get(temp.pitch).append(temp)
-					elif message.type == "note_off":
-						curr_notes = note_dict.get(temp.pitch)
-						#assert(curr_note.status == True )
-						if curr_notes is None:
-							print("off before on")
-						curr_note = curr_notes.pop(0)
-						if curr_note.status is not True:
-							print("ERORR HERE")
-						curr_note.status = False
-						curr_note.note_off_time = current_time
-						curr_note.calc_duration()
-						note_data = curr_note.get_data()
+					
 
-						data.append(note_data)
+					if mode =="default":
+						if message.type == "note_on":
+							temp.note_on_time = current_time
+							if note_dict.get(temp.pitch) is None:
+								note_dict[temp.pitch] = [temp]
+							else:
+								note_dict.get(temp.pitch).append(temp)
+						elif message.type == "note_off":
+							curr_notes = note_dict.get(temp.pitch)
+							#assert(curr_note.status == True )
+							if curr_notes is None:
+								print("off before on")
+							curr_note = curr_notes.pop(0)
+							if curr_note.status is not True:
+								print("ERORR HERE")
+							curr_note.status = False
+							curr_note.note_off_time = current_time
+							curr_note.calc_duration()
+							note_data = curr_note.get_data()
+
+							data.append(note_data)
+					elif mode =="no_off":
+						if prev_note is None :
+							prev_note = temp
+							continue
+						if message_time != 0:
+							temp_time = message_time
+
+						prev_note.note_on_time = current_time-temp_time
+						prev_note.note_off_time = current_time
+						prev_note.calc_duration()
+						data.append(prev_note.get_data())
+						prev_note = temp
+							
+
 
 
 	
 		
 
 		df = pd.DataFrame(data = data, columns = ["Pitch","Duration","Velocity","Time"])
+
+
+		if len(df) == 0 and count == 1:
+			count-=1
+			return analyze_file(midi_path,mode="no_off",count = count)
+
+
 
 	return df
 
@@ -246,26 +270,19 @@ def plot(df):
 
 if __name__ == "__main__":
 
-	abs_path = "MIDI/test"
+	abs_path = "MIDI/pop"
 	MIDI_list = ef.listdir_nohidden(abs_path)
 	total_result = []
 	matchDict = None
 	for a in MIDI_list:
 		print(a)
-		try:
-			df = analyze_file(a)
-			df = labelingParts(df)
-			dfUpper = df[df['Label'] == 0]
-			dfLower = df[df['Label'] == 1]
-			matchDict = ef.match(dfUpper,dfLower,matchDict)
-		except:
-			pass
+
+		df = analyze_file(a)
+		print(df)
 
 
 
 
-	freqDict = ef.getFreqDict(matchDict)
-	ef.printFreqDict(freqDict)
 	
 
 
