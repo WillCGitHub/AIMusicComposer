@@ -1,6 +1,7 @@
 from functools import reduce
 from collections import Counter
 import random
+import RW_obj as rw
 
 import operator
 
@@ -79,6 +80,18 @@ class MarkovChain:
 			r.append("\n")
 
 		return "".join(r)
+
+	def __iter__(self):
+		self.idx = 0
+		self.iter_list = sorted(self.state_chain.items())
+		return self
+
+	def __next__(self):
+		self.idx+=1
+		if self.idx >= len(self.iter_list):
+			raise StopIteration
+		return (self.iter_list[self.idx][0],list(self.iter_list[self.idx][1].rate_table.items()))
+
 
 	def __add__(self,other):
 		if not isinstance(other,MarkovChain):
@@ -209,34 +222,9 @@ class MarkovChain:
 
 if __name__ == "__main__":
 
-	l = [1,2,3,4,5,1,2,4,5,3,3,1,2,3,4,5]
-	l2 = [1,2,3,4,5]
-
-
-
-
-	mc = MarkovChain()
-	mc2 = MarkovChain()
-	"""
-	mc.addData(l)
-	mc2.addData(l2)
-	mc.calc_rate()
-	mc2.calc_rate()
-	n = mc+mc2
-	mc.addData(l2)
-	mc.calc_rate()
-	assert(n == mc)
-	"""
-	mc.addData_multi_dim(l,6)
-	mc.addData_multi_dim(l,5)
-	mc.addData_multi_dim(l,2)
-	mc.addData_multi_dim(l,1)
-
-
-
-	t = mc.get_next_state("1")
-	print(type(t))
-
+	mc = rw.load_obj("test_pitch_table_list_3")
+	for (k,v) in mc:
+		print(k,v)
 
 
 
